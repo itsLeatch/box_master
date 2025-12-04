@@ -1,8 +1,11 @@
+import 'package:box_master/healthKitPermission.dart';
 import 'package:box_master/listAvailableDevicesScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:health/health.dart';
 
-void main() {
+late Health health;
+void main() async {
   // if your terminal doesn't support color you'll see annoying logs like `\x1B[1;35m`
   FlutterBluePlus.setLogLevel(LogLevel.none, color: false);
 
@@ -10,22 +13,79 @@ void main() {
   FlutterBluePlus.logs.listen((String s) {
     //print(s);
   });
+  WidgetsFlutterBinding.ensureInitialized();
+  // Global Health instance
+  health = Health();
+
+  // configure the health plugin before use.
+  await health.configure();
 
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  Future<bool> healthKidReady() async {
+    bool healthKidInstalled =
+        await health.getHealthConnectSdkStatus() ==
+        HealthConnectSdkStatus.sdkAvailable;
+    bool allPermissions =
+        await GetHealthKitPermission.hasAllPermissions(health) ?? false;
+
+    return healthKidInstalled && allPermissions;
+  }
 
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Box Master',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: MyHomePage(),
+      home: FutureBuilder(
+        future: healthKidReady(),
+        builder: (context, snapshot) {
+          if (snapshot.hasData == false) {
+            //show loading screen
+            return Center(child: CircularProgressIndicator());
+          } else {
+            if (snapshot.data == true) {
+              return HandleDevices();
+            } else {
+              return TextButton(
+                onPressed: () {
+                  Navigator.of(context)
+                      .push(
+                        MaterialPageRoute<void>(
+                          builder: (context) {
+                            return GetHealthKitPermission(health: health);
+                          },
+                        ),
+                      )
+                      .then((value) {
+                        setState(() {
+                          //update
+                        });
+                      });
+                },
+                child: Text("Get Permission"),
+              );
+            }
+          }
+        },
+      ),
     );
   }
 }
@@ -60,8 +120,8 @@ class _ShowCharacteristicValueState extends State<ShowCharacteristicValue> {
       setState(() {
         stringValue = "No matching characteristic found!";
       });
-      if (characteristic != null) {
-        characteristic.read().then((value) {
+      if (caloriesCharacteristic != null) {
+        caloriesCharacteristic?.read().then((value) {
           setState(() {
             stringValue = String.fromCharCodes(value);
           });
@@ -98,6 +158,23 @@ class _ShowCharacteristicValueState extends State<ShowCharacteristicValue> {
     return null;
   }
 
+  Future<double> getActiveBurnedCalories(
+    DateTime startTime,
+    DateTime endTime,
+  ) async {
+    double totalActiveBurnedCalories = 0;
+    var entries = await health.getHealthDataFromTypes(
+      types: [HealthDataType.ACTIVE_ENERGY_BURNED],
+      startTime: startTime,
+      endTime: endTime,
+    );
+    for (var entry in entries) {
+      totalActiveBurnedCalories +=
+          (entry.value as NumericHealthValue).numericValue.toDouble();
+    }
+    return totalActiveBurnedCalories;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (caloriesCharacteristic == null) {
@@ -105,31 +182,52 @@ class _ShowCharacteristicValueState extends State<ShowCharacteristicValue> {
     } else {
       return Scaffold(
         body: SafeArea(
-          child: Column(
-            children: [
-              Text(stringValue),
-              TextField(
-                onSubmitted: (value) {
-                  setState(() {
-                    caloriesCharacteristic?.write(value.codeUnits);
-                  });
-                },
-              ),
-            ],
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(stringValue),
+                TextButton(
+                  onPressed: () {
+                    DateTime now = DateTime.now();
+                    DateTime today = DateTime(now.year, now.month, now.day);
+                    getActiveBurnedCalories(today, now).then((value) {
+                      print(value);
+                      setState(() {
+                        caloriesCharacteristic?.write(value.toString().codeUnits);
+                      });
+                      if (caloriesCharacteristic != null) {
+                        caloriesCharacteristic?.read().then((value) {
+                          setState(() {
+                            stringValue = String.fromCharCodes(value);
+                          });
+                        });
+                      }
+                    });
+                  },
+                  child: Text("Update"),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
   }
-}
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({super.key});
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  void dispose() {
+    super.dispose();
+  }
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class HandleDevices extends StatefulWidget {
+  HandleDevices({super.key});
+  @override
+  State<HandleDevices> createState() => _HandleDevicesState();
+}
+
+class _HandleDevicesState extends State<HandleDevices> {
   DeviceController deviceController = DeviceController();
   bool isConnected = false;
   @override
@@ -149,7 +247,7 @@ class _MyHomePageState extends State<MyHomePage> {
         if (state.data == BluetoothAdapterState.on) {
           return ListAvailableDevices(deviceController: deviceController);
         } else {
-          return Text("Please turn on bluetooth");
+          return Scaffold(body: Text("Please turn on bluetooth"));
         }
       },
     );
