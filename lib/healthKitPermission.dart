@@ -133,7 +133,12 @@ class Get_HealthKitPermissionState extends State<GetHealthKitPermission> {
                             });
                           });
                         },
-                        child: Center(child: Text("Get permission")),
+                        child: Center(
+                          child: Text(
+                            "Click to grant Health Kit Permissions",  
+                            style: Theme.of(context).textTheme.displayLarge,
+                          ),
+                        ),
                       );
                     } else {
                       return Center(
@@ -141,7 +146,7 @@ class Get_HealthKitPermissionState extends State<GetHealthKitPermission> {
                           onPressed: () {
                             Navigator.pop(context);
                           },
-                          child: Text("All permissions are done. Go back!"),
+                          child: Text("All permissions are granted. Go back!"),
                         ),
                       );
                     }

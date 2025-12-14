@@ -19,9 +19,17 @@ class DeviceController extends ChangeNotifier{
     notifyListeners();
   }
 
-  BluetoothDevice? get connectedDevice => _connectedDevice;
-  bool get isConnected => _connectedDevice?.isConnected ?? false;
+  //disable connected device
+  void disconnectDevice(){
+    _connectedDevice = null;
+    notifyListeners();
+  }
 
+  BluetoothDevice? get connectedDevice => _connectedDevice;
+  bool get isConnected {
+    if(_connectedDevice == null) return false;
+   return _connectedDevice?.isConnected ?? false;
+  }
 }
 
 

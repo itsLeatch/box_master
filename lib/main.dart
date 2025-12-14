@@ -1,5 +1,6 @@
 import 'package:box_master/healthKitPermission.dart';
 import 'package:box_master/listAvailableDevicesScreen.dart';
+import 'package:box_master/showStatsScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:health/health.dart';
@@ -50,174 +51,29 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Box Master',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.cyan),
       ),
-      home: FutureBuilder(
-        future: healthKidReady(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData == false) {
-            //show loading screen
-            return Center(child: CircularProgressIndicator());
-          } else {
-            if (snapshot.data == true) {
-              return HandleDevices();
+      home: Scaffold(
+        body: FutureBuilder(
+          future: healthKidReady(),
+          builder: (context, snapshot) {
+            if (snapshot.hasData == false) {
+              //show loading screen
+              return Center(child: CircularProgressIndicator());
             } else {
-              return TextButton(
-                onPressed: () {
-                  Navigator.of(context)
-                      .push(
-                        MaterialPageRoute<void>(
-                          builder: (context) {
-                            return GetHealthKitPermission(health: health);
-                          },
-                        ),
-                      )
-                      .then((value) {
-                        setState(() {
-                          //update
-                        });
-                      });
-                },
-                child: Text("Get Permission"),
-              );
+              if (snapshot.data == true) {
+                return HandleDevices();
+              } else {
+                return GetHealthKitPermission(health: health);
+              }
             }
-          }
-        },
+          },
+        ),
       ),
     );
-  }
-}
-
-class ShowCharacteristicValue extends StatefulWidget {
-  ShowCharacteristicValue({super.key, required this.deviceController});
-  DeviceController deviceController;
-
-  @override
-  State<ShowCharacteristicValue> createState() =>
-      _ShowCharacteristicValueState();
-}
-
-class _ShowCharacteristicValueState extends State<ShowCharacteristicValue> {
-  List<BluetoothService> services = [];
-  String stringValue = "No data yet";
-  BluetoothCharacteristic? caloriesCharacteristic;
-
-  @override
-  void initState() {
-    getCharacteristic(
-      "4fafc201-1fb5-459e-8fcc-c5c9c331914b",
-      "beb5483e-36e1-4688-b7f5-ea07361b26a8",
-    ).then((characteristic) {
-      caloriesCharacteristic = characteristic;
-      caloriesCharacteristic?.onValueReceived.listen((event) {
-        setState(() {
-          stringValue = String.fromCharCodes(event);
-        });
-      });
-
-      setState(() {
-        stringValue = "No matching characteristic found!";
-      });
-      if (caloriesCharacteristic != null) {
-        caloriesCharacteristic?.read().then((value) {
-          setState(() {
-            stringValue = String.fromCharCodes(value);
-          });
-        });
-      }
-    });
-    super.initState();
-  }
-
-  Future<bool> updateServices() async {
-    services =
-        await widget.deviceController.connectedDevice!.discoverServices();
-    return true;
-  }
-
-  Future<BluetoothCharacteristic?> getCharacteristic(
-    String serviceUUID,
-    String characteristicUUID,
-  ) async {
-    await updateServices();
-    List<BluetoothCharacteristic> bluetoothCharacteristics = [];
-
-    for (var service in services) {
-      if (service.uuid == Guid.fromString(serviceUUID)) {
-        bluetoothCharacteristics = service.characteristics;
-      }
-    }
-
-    for (var characteristic in bluetoothCharacteristics) {
-      if (characteristic.uuid == Guid.fromString(characteristicUUID)) {
-        return characteristic;
-      }
-    }
-    return null;
-  }
-
-  Future<double> getActiveBurnedCalories(
-    DateTime startTime,
-    DateTime endTime,
-  ) async {
-    double totalActiveBurnedCalories = 0;
-    var entries = await health.getHealthDataFromTypes(
-      types: [HealthDataType.ACTIVE_ENERGY_BURNED],
-      startTime: startTime,
-      endTime: endTime,
-    );
-    for (var entry in entries) {
-      totalActiveBurnedCalories +=
-          (entry.value as NumericHealthValue).numericValue.toDouble();
-    }
-    return totalActiveBurnedCalories;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (caloriesCharacteristic == null) {
-      return Scaffold(body: SafeArea(child: Text(stringValue)));
-    } else {
-      return Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(stringValue),
-                TextButton(
-                  onPressed: () {
-                    DateTime now = DateTime.now();
-                    DateTime today = DateTime(now.year, now.month, now.day);
-                    getActiveBurnedCalories(today, now).then((value) {
-                      print(value);
-                      setState(() {
-                        caloriesCharacteristic?.write(value.toString().codeUnits);
-                      });
-                      if (caloriesCharacteristic != null) {
-                        caloriesCharacteristic?.read().then((value) {
-                          setState(() {
-                            stringValue = String.fromCharCodes(value);
-                          });
-                        });
-                      }
-                    });
-                  },
-                  child: Text("Update"),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 }
 
@@ -247,7 +103,16 @@ class _HandleDevicesState extends State<HandleDevices> {
         if (state.data == BluetoothAdapterState.on) {
           return ListAvailableDevices(deviceController: deviceController);
         } else {
-          return Scaffold(body: Text("Please turn on bluetooth"));
+          return Scaffold(
+            body: Center(
+              child: Text(
+                "Please turn on bluetooth",
+                style: Theme.of(
+                  context,
+                ).textTheme.headlineLarge?.copyWith(color: Colors.red),
+              ),
+            ),
+          );
         }
       },
     );
@@ -256,7 +121,10 @@ class _HandleDevicesState extends State<HandleDevices> {
   @override
   Widget build(BuildContext context) {
     return isConnected
-        ? ShowCharacteristicValue(deviceController: deviceController)
+        ? ShowCharacteristicValue(
+          deviceController: deviceController,
+          health: health,
+        )
         : showAvailableDevicesScreen();
   }
 
