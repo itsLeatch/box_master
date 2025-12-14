@@ -5,3 +5,5 @@ This repository contains the Flutter application for the Box Master project, whi
 - detect if bluetooth is enabled and request permissions for health connect
 - Syncs health data using Google Health Connect
 - Connects to Custom Locker Extended hardware via Bluetooth
+
+<img src="https://github.com/user-attachments/assets/c3188fc4-8a68-4362-b6d0-0e3f40f921c1" width="256">
