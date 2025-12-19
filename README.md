@@ -10,7 +10,13 @@ This repository contains the Flutter application for the Box Master project, whi
 <img src="https://github.com/user-attachments/assets/346e49df-acae-46e4-b64e-31d13eb5b3d7" width="256">
 <img src="https://github.com/user-attachments/assets/c3188fc4-8a68-4362-b6d0-0e3f40f921c1" width="256">
 
-# How to build
+
+
+https://github.com/user-attachments/assets/28022000-88c3-4b23-8f9c-2944c17416d4
+
+
+
+## How to build
 1. Clone the repository
 2. Ensure you have Flutter installed and set up on your machine
 3. Run `flutter pub get` to install dependencies
