@@ -99,8 +99,7 @@ class _ListAvailableDevicesState extends State<ListAvailableDevices> {
     final isConnected = widget.deviceController.connectedDevice?.remoteId == device.remoteId;
 
     return ListTile(
-      title: Text(device.platformName.isNotEmpty ? device.platformName : device.remoteId.toString()),
-      subtitle: Text(device.remoteId.toString()),
+      title: Text(device.platformName.isNotEmpty ? device.advName : "Unknown Device"),
       trailing: isConnected
           ? ElevatedButton(
               onPressed: () => disconnect(device), child: Text("Disconnect"))
